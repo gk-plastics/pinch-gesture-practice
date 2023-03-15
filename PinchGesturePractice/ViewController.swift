@@ -7,119 +7,7 @@
 
 import UIKit
 
-class ViewController: UIViewController {
-    private(set) weak var someView: UIView?
-    private(set) weak var pinchGestureRecognizer: UIPinchGestureRecognizer?
-
-    override func viewDidLoad() {
-        super.viewDidLoad()
-        setupViews()
-        setupGestureRecognizers()
-    }
-
-    private func setupViews() {
-        let someView = UIView(frame: CGRect(x: 50, y: 50, width: 200, height: 200))
-        someView.backgroundColor = .red
-        someView.center = view.center
-        self.view.addSubview(someView)
-        self.someView = someView
-    }
-
-    private func setupGestureRecognizers() {
-        let pinchGestureRecognizer = UIPinchGestureRecognizer(target: self, action: #selector(someViewWasPinched))
-        self.view.addGestureRecognizer(pinchGestureRecognizer)
-        self.pinchGestureRecognizer = pinchGestureRecognizer
-    }
-
-    @objc private func someViewWasPinched(_ sender: UIPinchGestureRecognizer) {
-        switch sender.state {
-        case .began, .changed:
-            zoom(scale: sender.scale, anchorPoint: sender.location(in: someView))
-            sender.scale = 1.0
-        default:
-            break
-        }
-    }
-
-    private func zoom(scale: CGFloat, anchorPoint: CGPoint) {
-        guard let someView = someView else { return }
-        var frame = someView.frame
-        let newWidth = frame.width * scale
-        let newHeight = frame.height * scale
-        frame.origin.x -= (newWidth - frame.width) * anchorPoint.x / frame.width
-        frame.origin.y -= (newHeight - frame.height) * anchorPoint.y / frame.height
-        frame.size.width = newWidth
-        frame.size.height = newHeight
-        someView.frame = frame
-    }
-}
-
-// MARK: -
-
-final class ViewControllerA: UIViewController {
-    private weak var someView: UIView? // Added to the view of SomeViewController
-    private weak var pinchGestureRecognizer: UIPinchGestureRecognizer? // Added to the view of SomeViewController
-
-    override func viewDidLoad() {
-        super.viewDidLoad()
-        addSomeView()
-        addPinchGestureRecognizer()
-    }
-
-    private func addSomeView() {
-        let someView = UIView(frame: CGRect(x: 0, y: 0, width: 200, height: 200))
-        someView.backgroundColor = .red
-        someView.center = view.center
-        view.addSubview(someView)
-        self.someView = someView
-    }
-
-    private func addPinchGestureRecognizer() {
-        let pinchGestureRecognizer = UIPinchGestureRecognizer(target: self, action: #selector(someViewWasPinched(_:)))
-        someView?.addGestureRecognizer(pinchGestureRecognizer)
-        self.pinchGestureRecognizer = pinchGestureRecognizer
-    }
-
-    @objc private func someViewWasPinched(_ sender: UIPinchGestureRecognizer) {
-        guard let someView = someView else { return }
-        var scale: CGFloat = sender.scale
-        scale = max(scale, 0.5) // Minimum scale
-        scale = min(scale, 2.0) // Maximum scale
-
-        // Calculate anchor point
-        let pinchLocation = sender.location(in: someView)
-        let anchorPoint = CGPoint(x: pinchLocation.x / someView.bounds.width, y: pinchLocation.y / someView.bounds.height)
-
-        zoom(scale: scale, anchorPoint: anchorPoint)
-
-        // Reset scale to avoid compounding
-        sender.scale = 1.0
-    }
-
-    private func zoom(scale: CGFloat, anchorPoint: CGPoint) {
-        guard let someView = someView else { return }
-        var frame = someView.frame
-
-        // Calculate new width and height
-        let newWidth = frame.size.width * scale
-        let newHeight = frame.size.height * scale
-
-        // Calculate new origin x and y
-        let newOriginX = frame.origin.x - (newWidth - frame.size.width) * anchorPoint.x
-        let newOriginY = frame.origin.y - (newHeight - frame.size.height) * anchorPoint.y
-
-        // Set new frame
-        frame.origin.x = newOriginX
-        frame.origin.y = newOriginY
-        frame.size.width = newWidth
-        frame.size.height = newHeight
-        someView.frame = frame
-    }
-}
-
-// MARK: -
-
-final class ViewControllerB: UIViewController {
+final class ViewController: UIViewController {
     private(set) weak var someView: UIView?
     private(set) weak var pinchGestureRecognizer: UIPinchGestureRecognizer?
     private(set) weak var doubleTapGestureRecognizer: UITapGestureRecognizer?
@@ -204,7 +92,6 @@ final class ViewControllerB: UIViewController {
                                           y: relativeAnchor.y / frame.height)
         return frame.scaled(by: scale, relativeAnchorRatio: relativeAnchorRatio)
     }
-
     func zoom(scale: CGFloat, anchor: CGPoint, animated: Bool) {
         guard animated else { zoom(scale: scale, anchor: anchor); return }
         UIView.animate(withDuration: 0.3,
