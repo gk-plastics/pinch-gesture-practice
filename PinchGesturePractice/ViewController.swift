@@ -182,14 +182,27 @@ final class ViewControllerB: UIViewController {
     func zoom(scale: CGFloat, anchor: CGPoint) {
         print("scale: \(scale), anchor: \(anchor)")
         guard let someView = someView else { return }
-        var frame = someView.frame
-        frame.size.width *= scale
-        frame.size.height *= scale
-        let newAnchorPoint = CGPoint(x: anchor.x - frame.origin.x, y: anchor.y - frame.origin.y)
-        frame.origin.x -= newAnchorPoint.x * (scale - 1)
-        frame.origin.y -= newAnchorPoint.y * (scale - 1)
-        someView.frame = frame
+        let frame = someView.frame
+        someView.frame = scaleFrameA(frame: frame, scale: scale, anchor: anchor)
+        //someView.frame = scaleFrameB(frame: frame, scale: scale, anchor: anchor)
+        //someView.frame = scaleFrameC(frame: frame, scale: scale, anchor: anchor)
         print("==== currentScale: \(currentScale) ====")
+    }
+    // All the scaleFrame(A|B|C) method below do the same
+    private func scaleFrameA(frame: CGRect, scale: CGFloat, anchor: CGPoint) -> CGRect {
+        return frame.scaled(by: scale, anchor: anchor)
+    }
+    private func scaleFrameB(frame: CGRect, scale: CGFloat, anchor: CGPoint) -> CGRect {
+        let relativeAnchor: CGPoint = CGPoint(x: anchor.x - frame.origin.x,
+                                              y: anchor.y - frame.origin.y)
+        return frame.scaled(by: scale, relativeAnchor: relativeAnchor)
+    }
+    private func scaleFrameC(frame: CGRect, scale: CGFloat, anchor: CGPoint) -> CGRect {
+        let relativeAnchor: CGPoint = CGPoint(x: anchor.x - frame.origin.x,
+                                              y: anchor.y - frame.origin.y)
+        let relativeAnchorRatio = CGPoint(x: relativeAnchor.x / frame.width,
+                                          y: relativeAnchor.y / frame.height)
+        return frame.scaled(by: scale, relativeAnchorRatio: relativeAnchorRatio)
     }
 
     func zoom(scale: CGFloat, anchor: CGPoint, animated: Bool) {
