@@ -8,15 +8,17 @@
 import UIKit
 
 final class ViewController: UIViewController {
-    private(set) weak var someView: UIView?
+    private(set) weak var gradientView: RadialGradientView?
     private(set) weak var pinchGestureRecognizer: UIPinchGestureRecognizer?
     private(set) weak var doubleTapGestureRecognizer: UITapGestureRecognizer?
 
-    private var originalSize: CGSize = CGSize(width: 200, height: 200)
     private var currentScale: CGFloat {
-        guard let someView else { return 1.0 }
-        let originalWidth = originalSize.width
-        let currentWidth = someView.frame.width
+        guard let gradientView else { return 1.0 }
+        if gradientView.transform.isIdentity == false {
+            return gradientView.transform.scale // transform.scale is the custom extension property
+        }
+        let originalWidth = view.bounds.width
+        let currentWidth = gradientView.frame.width
         return currentWidth / originalWidth
     }
     private var isAlmostOriginalScale: Bool {
@@ -25,19 +27,19 @@ final class ViewController: UIViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        let someView = UIView(frame: CGRect(origin: .zero, size: originalSize))
-        someView.backgroundColor = .red
+        let someView = RadialGradientView(frame: CGRect(origin: .zero, size: view.bounds.size))
+        someView.backgroundColor = .orange
         someView.center = view.center
         view.addSubview(someView)
-        self.someView = someView
+        self.gradientView = someView
 
         let pinchGestureRecognizer = UIPinchGestureRecognizer(target: self, action: #selector(someViewWasPinched(_:)))
-        someView.addGestureRecognizer(pinchGestureRecognizer)
+        view.addGestureRecognizer(pinchGestureRecognizer)
         self.pinchGestureRecognizer = pinchGestureRecognizer
 
         let doubleTapGestureRecognizer = UITapGestureRecognizer(target: self, action: #selector(someViewWasDoubleTapped(_:)))
         doubleTapGestureRecognizer.numberOfTapsRequired = 2
-        someView.addGestureRecognizer(doubleTapGestureRecognizer)
+        view.addGestureRecognizer(doubleTapGestureRecognizer)
         self.doubleTapGestureRecognizer = doubleTapGestureRecognizer
     }
 
@@ -55,28 +57,29 @@ final class ViewController: UIViewController {
         }
     }
     @objc private func someViewWasDoubleTapped(_ sender: UIPinchGestureRecognizer) {
-        guard let someView else { return }
-        let anchor = someView.frame.center
+        guard let gradientView else { return }
+        let anchor = gradientView.frame.center
         print("==== currentScale: \(currentScale) ====")
         if isAlmostOriginalScale {
-            // currentScale is almost original (1.0). scale to 2.0
+            print("currentScale is almost original (1.0). scale to 2.0")
             zoom(scale: 2.0, anchor: anchor, animated: true)
         } else {
-            // currentScale is NOT 1.0 scale to 1 / currentScale
+            print("currentScale is NOT 1.0. scale to 1 / currentScale")
             resetZoom(animated: true)
         }
     }
 
     func zoom(scale: CGFloat, anchor: CGPoint) {
         print("scale: \(scale), anchor: \(anchor)")
-        guard let someView = someView else { return }
-        let frame = someView.frame
-        someView.frame = scaleFrameA(frame: frame, scale: scale, anchor: anchor)
-        //someView.frame = scaleFrameB(frame: frame, scale: scale, anchor: anchor)
-        //someView.frame = scaleFrameC(frame: frame, scale: scale, anchor: anchor)
+        guard let gradientView else { return }
+        //let frame = gradientView.frame
+        //gradientView.frame = scaleFrameA(frame: frame, scale: scale, anchor: anchor)
+        //gradientView.frame = scaleFrameB(frame: frame, scale: scale, anchor: anchor)
+        //gradientView.frame = scaleFrameC(frame: frame, scale: scale, anchor: anchor)
+        self.transform(view: gradientView, scale: scale, anchor: anchor)
         print("==== currentScale: \(currentScale) ====")
     }
-    // All the scaleFrame(A|B|C) method below do the same
+    // All the scaleFrame(A|B|C) methods below do the same
     private func scaleFrameA(frame: CGRect, scale: CGFloat, anchor: CGPoint) -> CGRect {
         return frame.scaled(by: scale, anchor: anchor)
     }
@@ -92,6 +95,14 @@ final class ViewController: UIViewController {
                                           y: relativeAnchor.y / frame.height)
         return frame.scaled(by: scale, relativeAnchorRatio: relativeAnchorRatio)
     }
+    // All scale the view using transform, without modifying frame
+    private func transform(view: UIView, scale: CGFloat, anchor: CGPoint) {
+        let anchorInBounds = CGPoint(x: anchor.x - view.frame.minX, y: anchor.y - view.frame.minY)
+        let anchorInRatio = CGPoint(x: anchorInBounds.x / view.bounds.width, y: anchorInBounds.y / view.bounds.height)
+        view.layer.anchorPoint = anchorInRatio
+        view.transform = CGAffineTransform(scaleX: scale, y: scale)
+    }
+    //
     func zoom(scale: CGFloat, anchor: CGPoint, animated: Bool) {
         guard animated else { zoom(scale: scale, anchor: anchor); return }
         UIView.animate(withDuration: 0.3,
@@ -104,9 +115,14 @@ final class ViewController: UIViewController {
     }
 
     func resetZoom() {
-        guard let someView else { return }
-        someView.frame.size = originalSize
-        someView.center = view.center
+        guard let gradientView else { return }
+        gradientView.center = view.center
+        gradientView.layer.anchorPoint = CGPoint(x: 0.5, y: 0.5)
+        if gradientView.transform.isIdentity {
+            gradientView.frame.size = view.bounds.size
+        } else {
+            gradientView.transform = .identity
+        }
     }
     func resetZoom(animated: Bool) {
         guard animated else { resetZoom(); return }
@@ -117,5 +133,34 @@ final class ViewController: UIViewController {
                         self?.resetZoom()
                        },
                        completion: nil)
+    }
+}
+
+// MARK: -
+
+final class RadialGradientView: UIView {
+    var startColor: UIColor = .white
+    var endColor: UIColor = .orange
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+    }
+    required init?(coder: NSCoder) {
+        super.init(coder: coder)
+    }
+    override func draw(_ rect: CGRect) {
+        let context = UIGraphicsGetCurrentContext()
+        let colors = [startColor.cgColor, endColor.cgColor] as CFArray
+        let center = CGPoint(x: bounds.midX, y: bounds.midY)
+        let radius = min(bounds.width, bounds.height) / 2
+        guard let gradient = CGGradient(colorsSpace: nil, colors: colors, locations: nil) else { assertionFailure(); return }
+        context?.drawRadialGradient(gradient, startCenter: center, startRadius: 0, endCenter: center, endRadius: radius, options: .drawsBeforeStartLocation)
+    }
+}
+
+// MARK: -
+
+extension CGAffineTransform {
+    var scale: Double {
+        return sqrt(Double(a * a + c * c))
     }
 }
