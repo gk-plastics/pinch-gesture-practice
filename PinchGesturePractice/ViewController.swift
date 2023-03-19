@@ -77,7 +77,17 @@ final class ViewController: UIViewController {
         //gradientView.frame = scaleFrameB(frame: frame, scale: scale, anchor: anchor)
         //gradientView.frame = scaleFrameC(frame: frame, scale: scale, anchor: anchor)
         self.transform(view: gradientView, scale: scale, anchor: anchor)
+        let currentScale = self.currentScale
         print("==== currentScale: \(currentScale) ====")
+        if currentScale < 1.0 {
+            if gradientView.transform == .identity {
+                // Move gradientView.center back to view.center
+                gradientView.center = view.center
+            } else {
+                // Apply only scale transform, removing by translation
+                gradientView.transform = .identity.scaledBy(x: currentScale, y: currentScale)
+            }
+        }
     }
     // All the scaleFrame(A|B|C) methods below do the same
     private func scaleFrameA(frame: CGRect, scale: CGFloat, anchor: CGPoint) -> CGRect {
@@ -123,14 +133,14 @@ final class ViewController: UIViewController {
     }
 
     func resetZoom() {
+        print()
         guard let gradientView else { return }
-        gradientView.center = view.center
-        gradientView.layer.anchorPoint = CGPoint(x: 0.5, y: 0.5)
         if gradientView.transform.isIdentity {
             gradientView.frame.size = view.bounds.size
         } else {
             gradientView.transform = .identity
         }
+        gradientView.center = view.center
     }
     func resetZoom(animated: Bool) {
         guard animated else { resetZoom(); return }
