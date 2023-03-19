@@ -97,10 +97,18 @@ final class ViewController: UIViewController {
     }
     // All scale the view using transform, without modifying frame
     private func transform(view: UIView, scale: CGFloat, anchor: CGPoint) {
-        let anchorInBounds = CGPoint(x: anchor.x - view.frame.minX, y: anchor.y - view.frame.minY)
-        let anchorInRatio = CGPoint(x: anchorInBounds.x / view.bounds.width, y: anchorInBounds.y / view.bounds.height)
-        view.layer.anchorPoint = anchorInRatio
-        view.transform = CGAffineTransform(scaleX: scale, y: scale)
+        print("scale: \(scale) anchor: \(anchor)")
+        print("viewFrame: \(view.frame) viewFrameCenter: \(view.frame.center)")
+        print("viewBounds: \(view.bounds) viewBoundsCenter: \(view.bounds.center)")
+        let relativeAnchor = view.convert(anchor, from: view.superview)
+        let viewCenter = view.center // Never changes, regardless of the transform
+        print("anchorInView: \(relativeAnchor)  viewCenter: \(viewCenter)")
+        let tx = (relativeAnchor.x - viewCenter.x) * (1 - scale)
+        let ty = (relativeAnchor.y - viewCenter.y) * (1 - scale)
+        print("tx: \(tx)  ty: \(ty)")
+        let t = CGAffineTransform(translationX: tx, y: ty)
+        let s = CGAffineTransform(scaleX: scale, y: scale)
+        view.transform = view.transform.concatenating(t.concatenating(s))
     }
     //
     func zoom(scale: CGFloat, anchor: CGPoint, animated: Bool) {
