@@ -33,17 +33,17 @@ final class ViewController: UIViewController {
         view.addSubview(someView)
         self.gradientView = someView
 
-        let pinchGestureRecognizer = UIPinchGestureRecognizer(target: self, action: #selector(someViewWasPinched(_:)))
+        let pinchGestureRecognizer = UIPinchGestureRecognizer(target: self, action: #selector(viewWasPinched(_:)))
         view.addGestureRecognizer(pinchGestureRecognizer)
         self.pinchGestureRecognizer = pinchGestureRecognizer
 
-        let doubleTapGestureRecognizer = UITapGestureRecognizer(target: self, action: #selector(someViewWasDoubleTapped(_:)))
+        let doubleTapGestureRecognizer = UITapGestureRecognizer(target: self, action: #selector(viewWasDoubleTapped(_:)))
         doubleTapGestureRecognizer.numberOfTapsRequired = 2
         view.addGestureRecognizer(doubleTapGestureRecognizer)
         self.doubleTapGestureRecognizer = doubleTapGestureRecognizer
     }
 
-    @objc private func someViewWasPinched(_ sender: UIPinchGestureRecognizer) {
+    @objc private func viewWasPinched(_ sender: UIPinchGestureRecognizer) {
         let anchor = sender.location(in: view)
         switch sender.state {
         case .began, .changed:
@@ -56,7 +56,7 @@ final class ViewController: UIViewController {
             break
         }
     }
-    @objc private func someViewWasDoubleTapped(_ sender: UIPinchGestureRecognizer) {
+    @objc private func viewWasDoubleTapped(_ sender: UIPinchGestureRecognizer) {
         guard let gradientView else { return }
         let anchor = gradientView.frame.center
         print("==== currentScale: \(currentScale) ====")
@@ -72,11 +72,8 @@ final class ViewController: UIViewController {
     func zoom(scale: CGFloat, anchor: CGPoint) {
         print("scale: \(scale), anchor: \(anchor)")
         guard let gradientView else { return }
-        //let frame = gradientView.frame
-        //gradientView.frame = scaleFrameA(frame: frame, scale: scale, anchor: anchor)
-        //gradientView.frame = scaleFrameB(frame: frame, scale: scale, anchor: anchor)
-        //gradientView.frame = scaleFrameC(frame: frame, scale: scale, anchor: anchor)
         self.transform(view: gradientView, scale: scale, anchor: anchor)
+        //self.scaleFrame(for: gradientView, scale: scale, anchor: anchor)
         let currentScale = self.currentScale
         print("==== currentScale: \(currentScale) ====")
         if currentScale < 1.0 {
@@ -89,7 +86,28 @@ final class ViewController: UIViewController {
             }
         }
     }
-    // All the scaleFrame(A|B|C) methods below do the same
+    // Scale view by mutating its transform
+    private func transform(view: UIView, scale: CGFloat, anchor: CGPoint) {
+        print("scale: \(scale) anchor: \(anchor)")
+        print("viewFrame: \(view.frame) viewFrameCenter: \(view.frame.center)")
+        print("viewBounds: \(view.bounds) viewBoundsCenter: \(view.bounds.center)")
+        let relativeAnchor = view.convert(anchor, from: view.superview)
+        let viewCenter = view.center // Never changes, regardless of the transform
+        print("anchorInView: \(relativeAnchor)  viewCenter: \(viewCenter)")
+        let tx = (relativeAnchor.x - viewCenter.x) * (1 - scale)
+        let ty = (relativeAnchor.y - viewCenter.y) * (1 - scale)
+        print("tx: \(tx)  ty: \(ty)")
+        let t = CGAffineTransform(translationX: tx, y: ty)
+        let s = CGAffineTransform(scaleX: scale, y: scale)
+        view.transform = view.transform.concatenating(t.concatenating(s))
+    }
+    // Scale view by mutating its frame
+    private func scaleFrame(for view: UIView, scale: CGFloat, anchor: CGPoint) {
+        let frame = view.frame
+        view.frame = scaleFrameA(frame: frame, scale: scale, anchor: anchor)
+        //view.frame = scaleFrameB(frame: frame, scale: scale, anchor: anchor)
+        //view.frame = scaleFrameC(frame: frame, scale: scale, anchor: anchor)
+    }
     private func scaleFrameA(frame: CGRect, scale: CGFloat, anchor: CGPoint) -> CGRect {
         return frame.scaled(by: scale, anchor: anchor)
     }
@@ -105,22 +123,7 @@ final class ViewController: UIViewController {
                                           y: relativeAnchor.y / frame.height)
         return frame.scaled(by: scale, relativeAnchorRatio: relativeAnchorRatio)
     }
-    // All scale the view using transform, without modifying frame
-    private func transform(view: UIView, scale: CGFloat, anchor: CGPoint) {
-        print("scale: \(scale) anchor: \(anchor)")
-        print("viewFrame: \(view.frame) viewFrameCenter: \(view.frame.center)")
-        print("viewBounds: \(view.bounds) viewBoundsCenter: \(view.bounds.center)")
-        let relativeAnchor = view.convert(anchor, from: view.superview)
-        let viewCenter = view.center // Never changes, regardless of the transform
-        print("anchorInView: \(relativeAnchor)  viewCenter: \(viewCenter)")
-        let tx = (relativeAnchor.x - viewCenter.x) * (1 - scale)
-        let ty = (relativeAnchor.y - viewCenter.y) * (1 - scale)
-        print("tx: \(tx)  ty: \(ty)")
-        let t = CGAffineTransform(translationX: tx, y: ty)
-        let s = CGAffineTransform(scaleX: scale, y: scale)
-        view.transform = view.transform.concatenating(t.concatenating(s))
-    }
-    //
+
     func zoom(scale: CGFloat, anchor: CGPoint, animated: Bool) {
         guard animated else { zoom(scale: scale, anchor: anchor); return }
         UIView.animate(withDuration: 0.3,
